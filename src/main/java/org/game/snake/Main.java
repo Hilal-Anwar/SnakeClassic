@@ -12,8 +12,12 @@ public class Main {
         try (var scanner = new Scanner(System.in)) {
             x = scanner.nextInt();
             y = scanner.nextInt();
-            var snake2D = new Game(x, y);
-            snake2D.start();
+            System.out.println("Select your game type");
+            System.out.println("# Press 1 for without walls (snake can go beyond wall)");
+            System.out.println("# Press 2 for with walls (snake can't go beyond wall)");
+            int choice = scanner.nextInt();
+            var snake2D = new Game(x, y, choice);
+            snake2D.start_game();
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }

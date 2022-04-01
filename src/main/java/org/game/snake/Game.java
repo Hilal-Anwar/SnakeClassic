@@ -9,11 +9,13 @@ import java.util.stream.IntStream;
 public class Game {
     private final int width;
     private final int height;
-    private final ArrayList<SnakeBody> snake = new ArrayList<>();
+    private SnakeBody[] snake;
     private final KeyBoardInput keyBoardInput = new KeyBoardInput();
     private int foodX;
     private int foodY;
     private final int choice;
+    private SnakeOrientation snakeOrientation = SnakeOrientation.HORIZONTAL;
+
     private Key dir = Key.RIGHT;
     private int snakeLength = 3;
     private int score;
@@ -26,19 +28,20 @@ public class Game {
     }
 
     void start_game() throws InterruptedException, IOException {
-        snake.add(new SnakeBody(width / 2, height / 2));
-        snake.add(new SnakeBody(width / 2, height / 2));
-        snake.add(new SnakeBody(width / 2, height / 2));
+        snake = new SnakeBody[width * height];
+        snake[0] = new SnakeBody(width / 2, height / 2);
+        snake[1] = new SnakeBody(width / 2, height / 2);
+        snake[2] = new SnakeBody(width / 2, height / 2);
         foodX = (int) (Math.random() * (width - 3) + 2);
         foodY = (int) (Math.random() * (height - 3) + 2);
         while (true) {
             if (gameStatus) {
                 move(score);
                 System.out.println();
-                System.out.println(message("", width / 2, Pos.Center, "Snake Classics"));
+                System.out.println(message("", width, Pos.Center, "Snake Classics"));
                 System.out.println();
                 draw();
-                System.out.println(message("Score : " + score, width + 1, Pos.Right, "Snake Length : " + snakeLength));
+                System.out.println(message("Score : " + score, width * 2 + 2, Pos.Right, "Snake Length : " + snakeLength));
             } else {
                 System.out.println("Game Over");
                 System.out.println("Game Master");
@@ -49,16 +52,19 @@ public class Game {
                     resetGame();
                 }
             }
-            Thread.sleep(50);
+            long horizontal_motion_fps = 50;
+            long vertical_motion_fps = 80;
+            Thread.sleep(snakeOrientation.equals(SnakeOrientation.HORIZONTAL) ?
+                    horizontal_motion_fps : vertical_motion_fps);
             cls();
         }
     }
 
     private void resetGame() {
-        snake.clear();
-        snake.add(new SnakeBody(width / 2, width / 2));
-        snake.add(new SnakeBody(width / 2, width / 2));
-        snake.add(new SnakeBody(width / 2, width / 2));
+        snake = new SnakeBody[width * height];
+        snake[0] = new SnakeBody(width / 2, width / 2);
+        snake[1] = new SnakeBody(width / 2, width / 2);
+        snake[2] = new SnakeBody(width / 2, width / 2);
         dir = Key.RIGHT;
         score = 0;
         snakeLength = 3;
@@ -79,50 +85,54 @@ public class Game {
             dir = Key.LEFT;
         if (keyBoardInput.getKeyBoardKey() == Key.RIGHT && dir != Key.LEFT)
             dir = Key.RIGHT;
-        IntStream.iterate(snake.size() - 1, i -> i >= 1, i -> i - 1).forEachOrdered(i -> {
-            snake.get(i).x = snake.get(i - 1).x;
-            snake.get(i).y = snake.get(i - 1).y;
-        });
+        for (int i = snakeLength-1; i >= 1; i = i - 1) {
+            snake[i].x = snake[i - 1].x;
+            snake[i].y = snake[i - 1].y;
+        }
         switch (dir) {
             case UP -> {
-                snake.get(0).y--;
-                if (snake.get(0).y == 0 & choice == 1)
-                    snake.get(0).y = height;
-                else if (snake.get(0).y == 0 && choice == 2) {
+                snakeOrientation = SnakeOrientation.VERTICAL;
+                snake[0].y--;
+                if (snake[0].y == 0 & choice == 1)
+                    snake[0].y = height - 1;
+                else if (snake[0].y == 0 && choice == 2) {
                     gameStatus = false;
                     play("sound/die.wav");
                 }
             }
             case DOWN -> {
-                snake.get(0).y++;
-                if (snake.get(0).y == height & choice == 1)
-                    snake.get(0).y = 0;
-                else if (snake.get(0).y == height && choice == 2) {
+                snakeOrientation = SnakeOrientation.VERTICAL;
+                snake[0].y++;
+                if (snake[0].y == height & choice == 1)
+                    snake[0].y = 1;
+                else if (snake[0].y == height && choice == 2) {
                     gameStatus = false;
                     play("sound/die.wav");
                 }
             }
             case LEFT -> {
-                snake.get(0).x--;
-                if (snake.get(0).x == 0 & choice == 1)
-                    snake.get(0).x = width;
-                else if (snake.get(0).x == 0 && choice == 2) {
+                snakeOrientation = SnakeOrientation.HORIZONTAL;
+                snake[0].x--;
+                if (snake[0].x == 0 & choice == 1)
+                    snake[0].x = width - 1;
+                else if (snake[0].x == 0 && choice == 2) {
                     gameStatus = false;
                     play("sound/die.wav");
                 }
             }
             case RIGHT -> {
-                snake.get(0).x++;
-                if (snake.get(0).x == width & choice == 1)
-                    snake.get(0).x = 0;
-                else if (snake.get(0).x == width && choice == 2) {
+                snakeOrientation = SnakeOrientation.HORIZONTAL;
+                snake[0].x++;
+                if (snake[0].x == width & choice == 1)
+                    snake[0].x = 1;
+                else if (snake[0].x == width && choice == 2) {
                     gameStatus = false;
                     play("sound/die.wav");
                 }
             }
         }
-        if (snake.get(0).x == foodX && snake.get(0).y == foodY) {
-            snake.add(new SnakeBody(0, 0));
+        if (snake[0].x == foodX && snake[0].y == foodY) {
+            snake[snakeLength ] = new SnakeBody(0, 0);
             newFood();
             score = score + 8;
             snakeLength++;
@@ -135,7 +145,13 @@ public class Game {
     }
 
     private boolean headHitsBody() {
-        return IntStream.range(1, snake.size()).anyMatch(i -> snake.get(0).x == snake.get(i).x && snake.get(0).y == snake.get(i).y);
+        int bound = snakeLength;
+        for (int i = 1; i < bound; i++) {
+            if (snake[0].x == snake[i].x && snake[0].y == snake[i].y) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void newFood() {
@@ -160,15 +176,15 @@ public class Game {
         for (int i = 0; i <= height; i++) {
             for (int j = 0; j <= width; j++) {
                 if (i == 0 || i == height || j == 0 || j == width || (j == foodX && i == foodY)) {
-                    String food = "\33[31;1m" + "█" + "\33[0m";
-                    String wall = "\33[36;1m" + "█" + "\33[0m";
+                    String food = "\33[31;1m" + "██" + "\33[0m";
+                    String wall = "\33[36;1m" + "██" + "\33[0m";
                     if (j == foodX && i == foodY)
                         box.append(food);
                     else box.append(wall);
                 } else if (isSnakePart(i, j)) {
-                    String body = "\33[33;1m" + "█" + "\33[0m";
+                    String body = "\33[33;1m" + "██" + "\33[0m";
                     box.append(body);
-                } else box.append(" ");
+                } else box.append("  ");
             }
             box.append("\n");
         }
@@ -176,7 +192,12 @@ public class Game {
     }
 
     private boolean isSnakePart(int i, int j) {
-        return snake.stream().anyMatch(snakeBody -> j == snakeBody.x && i == snakeBody.y);
+        for (int k = 0; k < snakeLength; k++) {
+            SnakeBody snakeBody = snake[k];
+            if (j == snakeBody.x && i == snakeBody.y)
+                return true;
+        }
+        return false;
     }
 
     private void play(String name) {
@@ -191,5 +212,9 @@ public class Game {
         } catch (UnsupportedAudioFileException | IOException | LineUnavailableException e) {
             e.printStackTrace();
         }
+    }
+
+    enum SnakeOrientation {
+        VERTICAL, HORIZONTAL
     }
 }

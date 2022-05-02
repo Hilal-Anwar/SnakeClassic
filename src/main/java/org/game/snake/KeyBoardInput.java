@@ -22,6 +22,7 @@ public class KeyBoardInput {
     private static Key getKeys(int ch) {
         return switch (ch) {
             case 65 -> Key.UP;
+            case 27->  Key.ESC;
             case 66 -> Key.DOWN;
             case 68 -> Key.LEFT;
             case 67 -> Key.RIGHT;

@@ -2,9 +2,7 @@ package org.game.snake;
 
 import javax.sound.sampled.*;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Objects;
-import java.util.stream.IntStream;
 
 public class Game {
     private final int width;
@@ -34,7 +32,7 @@ public class Game {
         snake[2] = new SnakeBody(width / 2, height / 2);
         foodX = (int) (Math.random() * (width - 3) + 2);
         foodY = (int) (Math.random() * (height - 3) + 2);
-        while (true) {
+        while (keyBoardInput.getKeyBoardKey() != Key.ESC) {
             if (gameStatus) {
                 move(score);
                 System.out.println();
@@ -52,12 +50,10 @@ public class Game {
                     resetGame();
                 }
             }
-            long horizontal_motion_fps = 50;
-            long vertical_motion_fps = 80;
-            Thread.sleep(snakeOrientation.equals(SnakeOrientation.HORIZONTAL) ?
-                    horizontal_motion_fps : vertical_motion_fps);
-            cls();
+            Thread.sleep(snakeOrientation.equals(SnakeOrientation.HORIZONTAL) ? 50 : 80);
+            clear_the_screen();
         }
+        System.exit(-1);
     }
 
     private void resetGame() {
@@ -81,7 +77,7 @@ public class Game {
             dir = Key.UP;
         if (keyBoardInput.getKeyBoardKey() == Key.DOWN && dir != Key.UP)
             dir = Key.DOWN;
-        if (keyBoardInput.getKeyBoardKey() == Key.LEFT && dir != Key.LEFT)
+        if (keyBoardInput.getKeyBoardKey() == Key.LEFT && dir != Key.RIGHT)
             dir = Key.LEFT;
         if (keyBoardInput.getKeyBoardKey() == Key.RIGHT && dir != Key.LEFT)
             dir = Key.RIGHT;
@@ -160,7 +156,7 @@ public class Game {
         play("sound/eat.wav");
     }
 
-    private void cls() throws IOException, InterruptedException {
+    private void clear_the_screen() throws IOException, InterruptedException {
         new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor();
     }
 

@@ -14,10 +14,11 @@ public class Game {
     private final int choice;
     private SnakeOrientation snakeOrientation = SnakeOrientation.HORIZONTAL;
 
-    private Key dir = Key.RIGHT;
-    private int snakeLength = 3;
+    private Key dir;
+    private int snakeLength;
     private int score;
     private boolean gameStatus = true;
+    private StringBuffer _game_frame;
 
     public Game(int width, int height, int choice) {
         this.width = width;
@@ -26,50 +27,53 @@ public class Game {
     }
 
     void start_game() throws InterruptedException, IOException {
-        snake = new SnakeBody[width * height];
-        snake[0] = new SnakeBody(width / 2, height / 2);
-        snake[1] = new SnakeBody(width / 2, height / 2);
-        snake[2] = new SnakeBody(width / 2, height / 2);
-        foodX = (int) (Math.random() * (width - 3) + 2);
-        foodY = (int) (Math.random() * (height - 3) + 2);
+        init();
         while (keyBoardInput.getKeyBoardKey() != Key.ESC) {
-            if (gameStatus) {
-                move(score);
-                System.out.println();
-                System.out.println(message("", width, Pos.Center, "Snake Classics"));
-                System.out.println();
-                draw();
-                System.out.println(message("Score : " + score, width * 2 + 2, Pos.Right, "Snake Length : " + snakeLength));
-            } else {
-                System.out.println("Game Over");
-                System.out.println("Game Master");
-                System.out.println(score);
-                System.out.println("Enter space bar to continue......");
-                if (keyBoardInput.getKeyBoardKey() == Key.SPACE) {
-                    gameStatus = true;
-                    resetGame();
-                }
-            }
-            Thread.sleep(snakeOrientation.equals(SnakeOrientation.HORIZONTAL) ? 50 : 80);
+            _render_the_frame();
+            gameStatus = (gameStatus) ? move() : game_over_message();
+            Thread.sleep(snakeOrientation.equals(SnakeOrientation.HORIZONTAL) ? 70 : 80);
             clear_the_screen();
+            _game_frame = new StringBuffer();
         }
         System.exit(-1);
     }
 
-    private void resetGame() {
+    private void init() {
         snake = new SnakeBody[width * height];
-        snake[0] = new SnakeBody(width / 2, width / 2);
-        snake[1] = new SnakeBody(width / 2, width / 2);
-        snake[2] = new SnakeBody(width / 2, width / 2);
+        snake[0] = new SnakeBody(width / 2, height / 2, "\033[0;31m" + "██" + "\33[0m");
+        snake[1] = new SnakeBody(width / 2, height / 2, "\033[0;33m" + "██" + "\33[0m");
+        snake[2] = new SnakeBody(width / 2, height / 2, "\033[0;33m" + "██" + "\33[0m");
+        foodX = (int) (Math.random() * (width - 3) + 2);
+        foodY = (int) (Math.random() * (height - 3) + 2);
         dir = Key.RIGHT;
         score = 0;
         snakeLength = 3;
+        _game_frame = new StringBuffer();
     }
 
-    private void move(int score) {
+    private boolean game_over_message() {
+        _game_frame.append("Game Over \n");
+        _game_frame.append("Game Master \n");
+        _game_frame.append(score).append("\n");
+        _game_frame.append("Enter space bar to continue...... :)\n");
+        System.out.println(_game_frame);
+        if (keyBoardInput.getKeyBoardKey() == Key.SPACE) {
+            gameStatus = true;
+            resetGame();
+        }
+        return gameStatus;
+    }
+
+    private void resetGame() {
+        init();
+    }
+
+    private boolean move() {
         for (int i = 0; i <= score / 100; i++) {
             movement();
         }
+        System.out.println(_game_frame);
+        return gameStatus;
     }
 
     public void movement() {
@@ -81,7 +85,7 @@ public class Game {
             dir = Key.LEFT;
         if (keyBoardInput.getKeyBoardKey() == Key.RIGHT && dir != Key.LEFT)
             dir = Key.RIGHT;
-        for (int i = snakeLength-1; i >= 1; i = i - 1) {
+        for (int i = snakeLength - 1; i >= 1; i = i - 1) {
             snake[i].x = snake[i - 1].x;
             snake[i].y = snake[i - 1].y;
         }
@@ -128,7 +132,7 @@ public class Game {
             }
         }
         if (snake[0].x == foodX && snake[0].y == foodY) {
-            snake[snakeLength ] = new SnakeBody(0, 0);
+            snake[snakeLength] = new SnakeBody(0, 0, "\033[0;33m" + "██" + "\33[0m");
             newFood();
             score = score + 8;
             snakeLength++;
@@ -167,33 +171,32 @@ public class Game {
         };
     }
 
-    private void draw() {
-        var box = new StringBuilder();
+    private void _render_the_frame() {
+        _game_frame.append('\n').append(message("", width, Pos.Center, "Snake Classics")).append('\n');
         for (int i = 0; i <= height; i++) {
             for (int j = 0; j <= width; j++) {
                 if (i == 0 || i == height || j == 0 || j == width || (j == foodX && i == foodY)) {
-                    String food = "\33[31;1m" + "██" + "\33[0m";
+                    String food = "\33[33;1m" + "██" + "\33[0m";
                     String wall = "\33[36;1m" + "██" + "\33[0m";
                     if (j == foodX && i == foodY)
-                        box.append(food);
-                    else box.append(wall);
-                } else if (isSnakePart(i, j)) {
-                    String body = "\33[33;1m" + "██" + "\33[0m";
-                    box.append(body);
-                } else box.append("  ");
+                        _game_frame.append(food);
+                    else _game_frame.append(wall);
+                } else if (isSnakePart(i, j) >= 0) {
+                    _game_frame.append(snake[isSnakePart(i, j)].color);
+                } else _game_frame.append("  ");
             }
-            box.append("\n");
+            _game_frame.append("\n");
         }
-        System.out.println(box);
+        _game_frame.append(message("Score : " + score, width * 2 + 2, Pos.Right, "Snake Length : " + snakeLength));
     }
 
-    private boolean isSnakePart(int i, int j) {
+    private int isSnakePart(int i, int j) {
         for (int k = 0; k < snakeLength; k++) {
             SnakeBody snakeBody = snake[k];
             if (j == snakeBody.x && i == snakeBody.y)
-                return true;
+                return k;
         }
-        return false;
+        return -1;
     }
 
     private void play(String name) {

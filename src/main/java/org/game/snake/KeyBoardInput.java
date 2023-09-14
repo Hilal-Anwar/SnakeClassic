@@ -7,17 +7,16 @@ import java.io.IOException;
 
 public class KeyBoardInput {
      private Key keyBoardKey=Key.RIGHT;
-
-    public KeyBoardInput() {
-      new Thread(()->{
-          try(Terminal terminal= TerminalBuilder.terminal()){
-              while (true){
-                  setKeyBoardKey(getKeys(terminal.reader().read()));
-              }
-          } catch (IOException e) {
-              e.printStackTrace();
-          }
-      }).start();
+    public KeyBoardInput(Display display) {
+        new Thread(() -> {
+            while (true) {
+                try {
+                    setKeyBoardKey(getKeys(display.terminal.reader().read()));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }).start();
     }
     private static Key getKeys(int ch) {
         return switch (ch) {

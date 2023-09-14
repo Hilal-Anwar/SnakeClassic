@@ -1,14 +1,28 @@
 package org.game.snake;
 
+import org.jline.utils.InfoCmp;
+
 import javax.sound.sampled.*;
 import java.io.IOException;
+import java.util.Map;
 import java.util.Objects;
+
 
 public class Game {
     private final int width;
     private final int height;
+    private final ProgressBar progressBar=new ProgressBar();
     private SnakeBody[] snake;
-    private final KeyBoardInput keyBoardInput = new KeyBoardInput();
+    private int progress_bar_frame=0;
+    private final Map<Integer, Food> food_list = Map.of(
+            1, new Food("Apple", "\uD83C\uDF4E", 5),
+            2, new Food("WaterMellon", "\uD83C\uDF49", 10),
+            3, new Food("Avocado", "\uD83E\uDD51", 5),
+            4, new Food("Chicken dum stick", "\uD83C\uDF57", 20,50),
+            5, new Food("Shortcake", "\uD83C\uDF70", 8),
+            6, new Food("Egg", "\uD83E\uDD5A", 15,30));
+    private KeyBoardInput keyBoardInput;
+    private Food current_food_item;
     private int foodX;
     private int foodY;
     private final int choice;
@@ -27,12 +41,23 @@ public class Game {
     }
 
     void start_game() throws InterruptedException, IOException {
+        var display=new Display();
+        keyBoardInput=new KeyBoardInput(display);
         init();
+        current_food_item=getCurrent_food_item();
         while (keyBoardInput.getKeyBoardKey() != Key.ESC) {
+            if(progressBar.isVisible){
+                if (progress_bar_frame==2)
+                {
+                    progress_bar_frame=0;
+                    progressBar.reduce_progress_by(1);
+                }
+                else progress_bar_frame++;
+            }
             _render_the_frame();
             gameStatus = (gameStatus) ? move() : game_over_message();
-            Thread.sleep(snakeOrientation.equals(SnakeOrientation.HORIZONTAL) ? 70 : 80);
-            clear_the_screen();
+            Thread.sleep(snakeOrientation.equals(SnakeOrientation.HORIZONTAL) ? 100 : 90);
+            display.terminal.puts(InfoCmp.Capability.clear_screen);
             _game_frame = new StringBuffer();
         }
         System.exit(-1);
@@ -40,11 +65,12 @@ public class Game {
 
     private void init() {
         snake = new SnakeBody[width * height];
-        snake[0] = new SnakeBody(width / 2, height / 2, "\033[0;31m" + "██" + "\33[0m");
-        snake[1] = new SnakeBody(width / 2, height / 2, "\033[0;33m" + "██" + "\33[0m");
-        snake[2] = new SnakeBody(width / 2, height / 2, "\033[0;33m" + "██" + "\33[0m");
-        foodX = (int) (Math.random() * (width - 3) + 2);
-        foodY = (int) (Math.random() * (height - 3) + 2);
+        snake[0] = new SnakeBody(width / 2, height / 2, /*"\033[0;31m" +*/ "\uD83D\uDD34" /*+ "\33[0m"*/);
+        snake[1] = new SnakeBody(width / 2, height / 2, /*"\033[0;33m" +*/ "\uD83D\uDFE2" /*+ "\33[0m"*/);
+        snake[2] = new SnakeBody(width / 2, height / 2, /*"\033[0;33m" +*/ "\uD83D\uDFE2" /*+ "\33[0m"*/);
+        /*foodX = (int) (Math.random() * (width - 3) + 2);
+        foodY = (int) (Math.random() * (height - 3) + 2);*/
+        newFood();
         dir = Key.RIGHT;
         score = 0;
         snakeLength = 3;
@@ -52,7 +78,7 @@ public class Game {
     }
 
     private boolean game_over_message() {
-        _game_frame.append("Game Over \n");
+        _game_frame.append("\nGame Over\n");
         _game_frame.append("Game Master \n");
         _game_frame.append(score).append("\n");
         _game_frame.append("Enter space bar to continue...... :)\n");
@@ -69,7 +95,7 @@ public class Game {
     }
 
     private boolean move() {
-        for (int i = 0; i <= score / 100; i++) {
+        for (int i = 0; i <= score / 1000; i++) {
             movement();
         }
         System.out.println(_game_frame);
@@ -97,7 +123,7 @@ public class Game {
                     snake[0].y = height - 1;
                 else if (snake[0].y == 0 && choice == 2) {
                     gameStatus = false;
-                    play("sound/die.wav");
+                    play("sound/dead.wav");
                 }
             }
             case DOWN -> {
@@ -107,7 +133,7 @@ public class Game {
                     snake[0].y = 1;
                 else if (snake[0].y == height && choice == 2) {
                     gameStatus = false;
-                    play("sound/die.wav");
+                    play("sound/dead.wav");
                 }
             }
             case LEFT -> {
@@ -127,19 +153,22 @@ public class Game {
                     snake[0].x = 1;
                 else if (snake[0].x == width && choice == 2) {
                     gameStatus = false;
-                    play("sound/die.wav");
+                    play("sound/dead.wav");
                 }
             }
         }
         if (snake[0].x == foodX && snake[0].y == foodY) {
-            snake[snakeLength] = new SnakeBody(0, 0, "\033[0;33m" + "██" + "\33[0m");
+            snake[snakeLength] = new SnakeBody(0, 0, /*"\033[0;33m" +*/ "\uD83D\uDFE2" /*+ "\33[0m"*/);
             newFood();
-            score = score + 8;
+            if (progressBar.isVisible)
+               score = score + current_food_item.extra_food_point();
+            else score+=current_food_item.food_points();
+
             snakeLength++;
         }
         if (headHitsBody()) {
             gameStatus = false;
-            play("sound/die.wav");
+            play("sound/dead.wav");
         }
 
     }
@@ -157,16 +186,16 @@ public class Game {
     private void newFood() {
         foodX = (int) (Math.random() * (width - 3) + 2);
         foodY = (int) (Math.random() * (height - 3) + 2);
+        progressBar.exit_progress_bar();
+        current_food_item=getCurrent_food_item();
+        if (current_food_item.name().equals("Chicken dum stick")||current_food_item.name().equals("Egg")){
+            progressBar.get_new_progress_bar();
+        }
         play("sound/eat.wav");
     }
-
-    private void clear_the_screen() throws IOException, InterruptedException {
-        new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor();
-    }
-
     private String message(String startWith, int length, Pos pos, String endWith) {
         return switch (pos) {
-            case Left, Right -> startWith + (" ".repeat(length - startWith.length() - endWith.length())) + endWith;
+            case Left, Right -> startWith + (" ".repeat(length - (startWith.length()) - endWith.length())) + endWith;
             case Center -> startWith + (" ".repeat(length - startWith.length() - endWith.length() / 2)) + endWith;
         };
     }
@@ -176,7 +205,7 @@ public class Game {
         for (int i = 0; i <= height; i++) {
             for (int j = 0; j <= width; j++) {
                 if (i == 0 || i == height || j == 0 || j == width || (j == foodX && i == foodY)) {
-                    String food = "\33[33;1m" + "██" + "\33[0m";
+                    String food = /*"\33[33;1m" +*/ current_food_item.emoji() /*+ "\33[0m"*/;
                     String wall = "\33[36;1m" + "██" + "\33[0m";
                     if (j == foodX && i == foodY)
                         _game_frame.append(food);
@@ -187,7 +216,19 @@ public class Game {
             }
             _game_frame.append("\n");
         }
-        _game_frame.append(message("Score : " + score, width * 2 + 2, Pos.Right, "Snake Length : " + snakeLength));
+        _game_frame.append('\n');
+        if (progressBar.isVisible){
+        _game_frame.append(message("Score : " +score+addSpace(width+1-("Score : " +score).length()-7)+progressBar.getProgress_bar(),
+                width * 2 + 2+11, Pos.Right, "Snake Length : " + snakeLength));
+        }
+        else {
+            _game_frame.append(message("Score : " +score,
+                    width * 2 + 2, Pos.Right, "Snake Length : " + snakeLength));
+        }
+    }
+
+    private String addSpace(int i) {
+        return " ".repeat(i);
     }
 
     private int isSnakePart(int i, int j) {
@@ -198,7 +239,9 @@ public class Game {
         }
         return -1;
     }
-
+    Food getCurrent_food_item(){
+        return food_list.get((int)(Math.random()*6+1));
+    }
     private void play(String name) {
         var url = Game.class.getResource(name);
         Clip audioClip;

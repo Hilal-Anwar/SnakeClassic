@@ -1,3 +1,5 @@
-.idea
+.idea/
 .out/
-.target/
+/target
+.settings
+/src/main/resources/META-INF
